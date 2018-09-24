@@ -82,8 +82,6 @@ fn test_fib () {
     assert_eq! (fib (10.0), 55.0);
 }
 
-
-
 mod fib_iter {
     fn fib (n: f64) -> f64 {
         fib_iter (1.0, 0.0, n)
@@ -103,42 +101,64 @@ mod fib_iter {
     }
 }
 
-// (= (expt b n)
-//    (if (eq n 0)
-//      1
-//      (mul b (expt b (sub n 1)))))
+fn expt (b: f64, n: f64) -> f64 {
+    if n == 0.0 {
+        1.0
+    } else {
+        b * expt (b, n - 1.0)
+    }
+}
 
-// (expt 2 10)
+#[test]
+fn test_expt () {
+    assert_eq! (expt (2.0, 10.0), 1024.0);
+}
 
-// (= (expt b n) (expt-iter b n 1))
+mod expt_iter {
+    fn expt (b: f64, n: f64) -> f64 {
+        expt_iter (b, n, 1.0)
+    }
 
-// (= (expt-iter b counter product)
-//    (if (eq counter 0)
-//      product
-//      (expt-iter b (sub counter 1) (mul b product))))
+    fn expt_iter (b: f64, counter: f64, product: f64) -> f64 {
+        if counter == 0.0 {
+            product
+        } else {
+            expt_iter (b, counter - 1.0, b * product)
+        }
+    }
 
-// (expt 2 10)
+    #[test]
+    fn test_expt () {
+        assert_eq! (expt (2.0, 10.0), 1024.0);
+    }
+}
 
-// (even-p n) = (eq (mod n 2) 0)
-// (square n) = (mul n n)
 
-// (= (fast-expt b n)
+fn even_p (n: f64) -> bool {
+    (n % 2.0) == 0.0
+}
+
+fn square (n: f64) -> f64 {
+    n * n
+}
+
+// (= (fast_expt b n)
 //    (cond [(eq n 0) 1]
-//          [(even-p n) (square (fast-expt b (div n 2)))]
-//          [else (mul b (fast-expt b (sub n 1)))]))
+//          [(even_p n) (square (fast_expt b (div n 2)))]
+//          [else (mul b (fast_expt b (sub n 1)))]))
 
-// (fast-expt 2 10)
+// (fast_expt 2 10)
 
-// (= (fast-expt b n) (fast-expt-iter 1 b n))
+// (= (fast_expt b n) (fast_expt_iter 1 b n))
 
-// (= (fast-expt-iter a b n)
+// (= (fast_expt_iter a b n)
 //    (cond [(eq n 0) a]
-//          [(even-p n)
-//           (fast-expt-iter a (square b) (div n 2))]
+//          [(even_p n)
+//           (fast_expt_iter a (square b) (div n 2))]
 //          [else
-//           (fast-expt-iter (mul a b) b (sub n 1))]))
+//           (fast_expt_iter (mul a b) b (sub n 1))]))
 
-// (fast-expt 2 10)
+// (fast_expt 2 10)
 
 // (note Exercise 1.19
 
@@ -148,24 +168,24 @@ mod fib_iter {
 //        b <- b p + a q)
 //     (compose (T p q) (T p q)) = (T (p p + q q) (2 p q + q q)))
 
-//   (fast-fib n) = (fast-fib-iter 1 0 0 1 n)
+//   (fast_fib n) = (fast_fib_iter 1 0 0 1 n)
 
-//   (= (fast-fib-iter a b p q n)
+//   (= (fast_fib_iter a b p q n)
 //      (cond [(eq n 0) b]
-//            [(even-p n)
-//             (fast-fib-iter
+//            [(even_p n)
+//             (fast_fib_iter
 //              a b
 //              (add (mul p p) (mul q q))
 //              (add (mul 2 (mul p q)) (mul q q))
 //              (div n 2))]
 //            [else
-//             (fast-fib-iter
+//             (fast_fib_iter
 //              (add (mul b q) (add (mul a q) (mul a p)))
 //              (add (mul b p) (mul a q))
 //              p q
 //              (sub n 1))]))
 
-//   (fast-fib 10))
+//   (fast_fib 10))
 
 // (= (gcd a b)
 //    (if (eq b 0)
@@ -174,19 +194,19 @@ mod fib_iter {
 
 // (gcd 206 40)
 
-// (= (smallest-divisor n)
-//    (find-divisor n 2))
+// (= (smallest_divisor n)
+//    (find_divisor n 2))
 
-// (= (find-divisor n test-divisor)
-//    (cond [(gt (square test-divisor) n) n]
-//          [(eq 0 (mod n test-divisor)) test-divisor]
-//          [else (find-divisor n (add test-divisor 1))]))
+// (= (find_divisor n test_divisor)
+//    (cond [(gt (square test_divisor) n) n]
+//          [(eq 0 (mod n test_divisor)) test_divisor]
+//          [else (find_divisor n (add test_divisor 1))]))
 
-// (assert (eq (smallest-divisor 123) 3))
-// (assert (eq (smallest-divisor 121) 11))
+// (assert (eq (smallest_divisor 123) 3))
+// (assert (eq (smallest_divisor 121) 11))
 
-// (= (prime-p n)
-//    (eq n (smallest-divisor n)))
+// (= (prime_p n)
+//    (eq n (smallest_divisor n)))
 
-// (assert (not (prime-p 121)))
-// (assert (prime-p 11))
+// (assert (not (prime_p 121)))
+// (assert (prime_p 11))
