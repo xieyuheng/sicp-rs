@@ -1,0 +1,92 @@
+#+html_head: <link rel="stylesheet" href="css/org-page.css"/>
+#+property: tangle ch_1_1.rs
+#+title: 1-1 The Elements of Pprogramming
+
+* 1-1-1 Expressions
+
+* 1-1-2 Naming and the Environment
+
+* 1-1-3 Evaluating Combinations
+
+* 1-1-4 Compound Procedures
+
+* 1-1-5 The Substitution Model for Procedure Application
+
+* 1-1-6 Conditional Expressions and Predicates
+
+* 1-1-7 Example: Square Roots by Newton's Method
+
+  #+begin_src rust
+  fn square (x: f64) -> f64 {
+      x * x
+  }
+
+  fn average (x: f64, y: f64) -> f64 {
+      (x + y) / 2.0
+  }
+
+  fn sqrt_iter (guess: f64, x: f64) -> f64 {
+      if good_enough_p (guess, x) {
+          guess
+      } else {
+          sqrt_iter (improve (guess, x), x)
+      }
+  }
+
+  fn improve (guess: f64, x: f64) -> f64 {
+      average (guess, x / guess)
+  }
+
+  fn good_enough_p (guess: f64, x: f64) -> bool {
+      (square (guess) - x) .abs () < 0.001
+  }
+
+  fn sqrt (x: f64) -> f64 {
+      sqrt_iter (1.0, x)
+  }
+
+  #[test]
+  fn test_sqrt_iter () {
+      assert! ((sqrt (2.0) - 1.414).abs () < 0.001);
+      assert! ((sqrt (9.0) - 3.0).abs () < 0.001);
+      assert! ((sqrt (100.0) - 10.0).abs () < 0.001);
+      assert! ((square (sqrt (1000.0)) - 1000.0).abs () < 0.001);
+  }
+  #+end_src
+
+* 1-1-8 Procedures as Black-Box Abstractions
+
+  #+begin_src rust
+  mod black_box {
+      use super::{
+          square,
+          average,
+      };
+
+      fn sqrt_iter (guess: f64, x: f64) -> f64 {
+          let improve = |guess| -> f64 {
+              average (guess, x / guess)
+          };
+          let good_enough_p = |guess| -> bool {
+              (square (guess) - x) .abs () < 0.001
+          };
+          if good_enough_p (guess) {
+              guess
+          } else {
+              sqrt_iter (improve (guess), x)
+          }
+      }
+
+      fn sqrt (x: f64) -> f64 {
+          sqrt_iter (1.0, x)
+      }
+
+      #[test]
+      fn test_sqrt_iter () {
+          assert! ((sqrt (2.0) - 1.414).abs () < 0.001);
+          assert! ((sqrt (9.0) - 3.0).abs () < 0.001);
+          assert! ((sqrt (100.0) - 10.0).abs () < 0.001);
+          assert! ((square (sqrt (1000.0)) - 1000.0).abs () < 0.001);
+      }
+  }
+  #+end_src

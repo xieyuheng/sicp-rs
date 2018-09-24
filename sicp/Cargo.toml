@@ -1,0 +1,13 @@
+[package]
+name = "sicp"
+version = "0.1.0"
+authors = ["Xie Yuheng <xyheme@gmail.com>"]
+edition = "2018"
+repository = "https://github.com/xieyuheng/sicp-rs"
+license = "GPL-3.0"
+keywords = ["sicp", "textbook"]
+description = """
+SICP in rust.
+"""
+
+[dependencies]
