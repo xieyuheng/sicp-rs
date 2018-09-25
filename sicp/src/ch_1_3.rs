@@ -32,6 +32,9 @@ fn test_sum_cubes () {
     assert_eq! (
         sum_cubes (0.0, 3.0),
         cube (1.0) + cube (2.0) + cube (3.0));
+    assert_eq! (
+        sum_cubes (1.0, 10.0),
+        3025.0);
 }
 
 fn pi_sum (a: f64, b: f64) -> f64 {
@@ -53,30 +56,11 @@ fn test_pi_sum () {
 }
 
 mod with_sum {
-    use super::cube;
-
-    // fn sum <F> (
-    //     term: F, a: f64,
-    //     next: F, b: f64,
-    // ) -> f64
-    // where F: Fn (f64) -> f64 {
-    //     if a > b {
-    //         0.0
-    //     } else {
-    //         term (a) +
-    //             sum (term, next (a),
-    //                  next, b)
-    //     }
-    // }
-
-    // error[E0308]: mismatched types
-    //   --> sicp/src/ch_1_3.rs:90:23
-    //    |
-    // 90 |         sum (cube, a, inc, b)
-    //    |                       ^^^ expected fn item, found a different fn item
-    //    |
-    //    = note: expected type `fn(f64) -> f64 {ch_1_3::cube}`
-    //               found type `fn(f64) -> f64 {ch_1_3::with_sum::inc}`
+    use super::{
+        assert_delta,
+        cube,
+        PI,
+    };
 
     fn sum (
         term: impl Fn (f64) -> f64, a: f64,
@@ -104,43 +88,54 @@ mod with_sum {
         assert_eq! (
             sum_cubes (0.0, 3.0),
             cube (1.0) + cube (2.0) + cube (3.0));
+        assert_eq! (
+            sum_cubes (1.0, 10.0),
+            3025.0);
     }
 
-    // (= (sum_cubes a b)
-    //    (sum cube a inc b))
+    fn identity (x: f64) -> f64 {
+        x
+    }
 
-    // (assert (eq (sum_cubes 0 3)
-    //             (add (cube 1)
-    //                  (add (cube 2)
-    //                       (cube 3)))))
+    fn sum_integers (a: f64, b: f64) -> f64 {
+        sum (identity, a, inc, b)
+    }
 
-    // (assert (eq (sum_cubes 1 10)
-    //             3025))
+    #[test]
+    fn test_sum_integers () {
+        assert_eq! (5050.0, sum_integers (0.0, 100.0));
+    }
 
-    // (= (identity x) x)
+    fn pi_sum (a: f64, b: f64) -> f64 {
+        let pi_term = |x| 1.0 / (x * (x + 2.0));
+        let pi_next = |x| x + 4.0;
+        sum (pi_term, a, pi_next, b)
+    }
 
-    // (= (sum_integers a b)
-    //    (sum identity a inc b))
+    #[test]
+    fn test_pi_sum () {
+        assert_delta (
+            0.001,
+            PI,
+            8.0 * pi_sum (1.0, 10000.0));
+    }
 
-    // (assert (eq 5050 (sum_integers 0 100)))
+    fn integral (
+        f: impl Fn (f64) -> f64,
+        a: f64, b: f64,
+        dx: f64,
+    ) -> f64 {
+        let add_dx = |x| x + dx;
+        sum (f, (a + (dx / 2.0)), add_dx, b) * dx
+    }
 
-    // (= (pi_sum a b)
-    //    (= (pi_term x) (div 1 (mul x (add x 2))))
-    //    (= (pi_next x) (add x 4))
-    //    (sum pi_term a pi_next b))
-
-
-    // (assert_delta 0.001
-    //   pi (mul 8 (pi_sum 1 10000)))
-
-    // (= (integral f a b dx)
-    //    (= (add_dx x) (add x dx))
-    //    (mul (sum f (add a (div dx 2)) add_dx b)
-    //         dx))
-
-    // (assert_delta 0.001
-    //   (integral cube 0 1 0.001)
-    //   (div 1 4))
+    #[test]
+    fn test_integral () {
+        assert_delta (
+            0.001,
+            integral (cube, 0.0, 1.0, 0.001),
+            1.0 / 4.0);
+    }
 }
 
 //  (= (simpson_integral f a b n)

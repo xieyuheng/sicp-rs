@@ -1,6 +1,7 @@
 #![feature(uniform_paths)]
 #![feature(test)]
 #![allow(unused_parens)]
+#![allow(unused_imports)]
 #![allow(dead_code)]
 #![allow(unused_macros)]
 
