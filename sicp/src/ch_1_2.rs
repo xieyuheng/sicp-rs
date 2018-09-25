@@ -1,3 +1,5 @@
+extern crate test;
+
 fn factorial (n: f64) -> f64 {
     if n <= 1.0 {
         1.0
@@ -133,7 +135,6 @@ mod expt_iter {
     }
 }
 
-
 fn even_p (n: f64) -> bool {
     (n % 2.0) == 0.0
 }
@@ -142,71 +143,121 @@ fn square (n: f64) -> f64 {
     n * n
 }
 
-// (= (fast_expt b n)
-//    (cond [(eq n 0) 1]
-//          [(even_p n) (square (fast_expt b (div n 2)))]
-//          [else (mul b (fast_expt b (sub n 1)))]))
+fn fast_expt (b: f64, n: f64) -> f64 {
+    if n == 0.0 {
+        1.0
+    } else if even_p (n) {
+        square (fast_expt (b, n / 2.0))
+    } else {
+        b * fast_expt (b, n - 1.0)
+    }
+}
 
-// (fast_expt 2 10)
+#[test]
+fn test_fast_expt () {
+    assert_eq! (fast_expt (2.0, 10.0), 1024.0);
+}
 
-// (= (fast_expt b n) (fast_expt_iter 1 b n))
+mod fast_expt_iter {
+    use super::{
+        even_p,
+        square,
+    };
 
-// (= (fast_expt_iter a b n)
-//    (cond [(eq n 0) a]
-//          [(even_p n)
-//           (fast_expt_iter a (square b) (div n 2))]
-//          [else
-//           (fast_expt_iter (mul a b) b (sub n 1))]))
+    fn fast_expt (b: f64, n: f64) -> f64 {
+        fast_expt_iter (1.0, b, n)
+    }
 
-// (fast_expt 2 10)
+    fn fast_expt_iter (a: f64, b: f64, n: f64) -> f64 {
+        if n == 0.0 {
+            a
+        } else if even_p (n) {
+            fast_expt_iter (a, square (b), n / 2.0)
+        } else {
+            fast_expt_iter (a * b, b, n - 1.0)
+        }
+    }
 
-// (note Exercise 1.19
+    #[test]
+    fn test_fast_expt () {
+        assert_eq! (fast_expt (2.0, 10.0), 1024.0);
+    }
+}
 
-//   (note
-//     (= (T p q)
-//        a <- b q + a q + a p
-//        b <- b p + a q)
-//     (compose (T p q) (T p q)) = (T (p p + q q) (2 p q + q q)))
 
-//   (fast_fib n) = (fast_fib_iter 1 0 0 1 n)
+// Exercise 1.19
+//   (= (T p q)
+//      a <- b q + a q + a p
+//      b <- b p + a q)
+//   (compose (T p q) (T p q)) = (T (p p + q q) (2 p q + q q))
 
-//   (= (fast_fib_iter a b p q n)
-//      (cond [(eq n 0) b]
-//            [(even_p n)
-//             (fast_fib_iter
-//              a b
-//              (add (mul p p) (mul q q))
-//              (add (mul 2 (mul p q)) (mul q q))
-//              (div n 2))]
-//            [else
-//             (fast_fib_iter
-//              (add (mul b q) (add (mul a q) (mul a p)))
-//              (add (mul b p) (mul a q))
-//              p q
-//              (sub n 1))]))
+fn fast_fib (n: f64) -> f64 {
+    fast_fib_iter (1.0, 0.0, 0.0, 1.0, n)
+}
 
-//   (fast_fib 10))
+fn fast_fib_iter (a: f64, b: f64, p: f64, q: f64, n: f64) -> f64 {
+    if n == 0.0 {
+        b
+    } else if even_p (n) {
+        fast_fib_iter (
+            a, b,
+            (p * p) + (q * q),
+            (2.0 * (p * q)) + (q * q),
+            n / 2.0)
+    } else {
+        fast_fib_iter (
+            (b * q) + (a * q) + (a * p),
+            (b * p) + (a * q),
+            p, q,
+            n - 1.0)
+    }
+}
 
-// (= (gcd a b)
-//    (if (eq b 0)
-//      a
-//      (gcd b (mod a b))))
+#[test]
+fn test_fast_fib () {
+    assert_eq! (fast_fib (10.0), 55.0);
+}
 
-// (gcd 206 40)
+fn gcd (a: f64, b: f64) -> f64 {
+    if b == 0.0 {
+        a
+    } else {
+        gcd (b, a % b)
+    }
+}
 
-// (= (smallest_divisor n)
-//    (find_divisor n 2))
+#[test]
+fn test_gcd () {
+    assert_eq! (gcd (206.0, 40.0), 2.0);
+    assert_eq! (gcd (13.0, 5.0), 1.0);
+}
 
-// (= (find_divisor n test_divisor)
-//    (cond [(gt (square test_divisor) n) n]
-//          [(eq 0 (mod n test_divisor)) test_divisor]
-//          [else (find_divisor n (add test_divisor 1))]))
+fn smallest_divisor (n: f64) -> f64 {
+    find_divisor (n, 2.0)
+}
 
-// (assert (eq (smallest_divisor 123) 3))
-// (assert (eq (smallest_divisor 121) 11))
+fn find_divisor (n: f64, test_divisor: f64) -> f64 {
+    if square (test_divisor) > n {
+        n
+    } else if 0.0 == n % test_divisor {
+        test_divisor
+    } else {
+        find_divisor (n, test_divisor + 1.0)
+    }
+}
 
-// (= (prime_p n)
-//    (eq n (smallest_divisor n)))
+#[test]
+fn test_smallest_divisor () {
+    assert_eq! (smallest_divisor (123.0), 3.0);
+    assert_eq! (smallest_divisor (121.0), 11.0);
+}
 
-// (assert (not (prime_p 121)))
-// (assert (prime_p 11))
+fn prime_p (n: f64) -> bool {
+    n == smallest_divisor (n)
+}
+
+#[test]
+fn test_prime_p () {
+    assert! (! prime_p (121.0));
+    assert! (prime_p (11.0));
+}

@@ -1,4 +1,5 @@
 #![feature(uniform_paths)]
+#![feature(test)]
 #![allow(unused_parens)]
 #![allow(dead_code)]
 #![allow(unused_macros)]
