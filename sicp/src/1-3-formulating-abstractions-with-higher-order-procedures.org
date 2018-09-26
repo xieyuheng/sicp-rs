@@ -76,6 +76,10 @@
         a + 1.0
     }
 
+    fn identity (x: f64) -> f64 {
+        x
+    }
+
     // we can not use the following
     //   because currently equivalence between function types
     //   is not handled properly  by rust's type system
@@ -95,8 +99,8 @@
     // }
 
     fn sum (
-        term: &impl Fn (f64) -> f64, a: f64,
-        next: &impl Fn (f64) -> f64, b: f64,
+        term: &Fn (f64) -> f64, a: f64,
+        next: &Fn (f64) -> f64, b: f64,
     ) -> f64 {
         if a > b {
             0.0
@@ -112,7 +116,8 @@
             assert_delta,
             cube,
             PI,
-            inc, sum,
+            inc, identity,
+            sum,
         };
 
         fn sum_cubes (a: f64, b: f64) -> f64 {
@@ -127,10 +132,6 @@
             assert_eq! (
                 sum_cubes (1.0, 10.0),
                 3025.0);
-        }
-
-        fn identity (x: f64) -> f64 {
-            x
         }
 
         fn sum_integers (a: f64, b: f64) -> f64 {
@@ -157,7 +158,7 @@
         }
 
         fn integral (
-            f: &impl Fn (f64) -> f64,
+            f: & Fn (f64) -> f64,
             a: f64, b: f64,
             dx: f64,
         ) -> f64 {
@@ -187,7 +188,7 @@
   }
 
   fn simpson_integral (
-      f: &impl Fn (f64) -> f64,
+      f: & Fn (f64) -> f64,
       a: f64, b: f64,
       n: f64,
   ) -> f64 {
@@ -231,8 +232,8 @@
       // rust does not have letrec for now
 
       // fn sum (
-      //     term: &impl Fn (f64) -> f64, a: f64,
-      //     next: &impl Fn (f64) -> f64, b: f64,
+      //     term: & Fn (f64) -> f64, a: f64,
+      //     next: & Fn (f64) -> f64, b: f64,
       // ) -> f64 {
       //     letrec sum_iter = |a, result| {
       //         if a > b {
@@ -245,8 +246,8 @@
       // }
 
       fn sum_iter (
-          term: &impl Fn (f64) -> f64, a: f64,
-          next: &impl Fn (f64) -> f64, b: f64,
+          term: & Fn (f64) -> f64, a: f64,
+          next: & Fn (f64) -> f64, b: f64,
           result: f64,
       ) -> f64 {
           if a > b {
@@ -260,8 +261,8 @@
       }
 
       fn sum (
-          term: &impl Fn (f64) -> f64, a: f64,
-          next: &impl Fn (f64) -> f64, b: f64,
+          term: & Fn (f64) -> f64, a: f64,
+          next: & Fn (f64) -> f64, b: f64,
       ) -> f64 {
           sum_iter (term, a, next, b, 0.0)
       }
@@ -286,8 +287,8 @@
 
   #+begin_src rust
   fn product (
-      term: &impl Fn (f64) -> f64, a: f64,
-      next: &impl Fn (f64) -> f64, b: f64,
+      term: & Fn (f64) -> f64, a: f64,
+      next: & Fn (f64) -> f64, b: f64,
   ) -> f64 {
       if a > b {
           1.0
@@ -318,96 +319,166 @@
 * Exercise 1.32 -- accumulate
 
   #+begin_src rust
-  //  (= (accumulate combiner null_value
-  //                 term a next b)
-  //     (if (gt a b)
-  //       null_value
-  //       (combiner (term a)
-  //                 (accumulate combiner null_value
-  //                             term (next a) next b))))
+  fn accumulate (
+      combiner: &Fn (f64, f64) -> f64,
+      null_value: f64,
+      term: &Fn (f64) -> f64, a: f64,
+      next: &Fn (f64) -> f64, b: f64,
+  ) -> f64 {
+      if a > b {
+          null_value
+      } else {
+          combiner (term (a),
+                    accumulate (
+                        combiner, null_value,
+                        term, next (a), next, b))
+      }
+  }
 
-  //  (= (sum term a next b)
-  //     (accumulate add 0 term a next b))
+  fn add (x: f64, y: f64) -> f64 {
+      x + y
+  }
 
-  //  (= (product term a next b)
-  //     (accumulate mul 1 term a next b))
+  fn mul (x: f64, y: f64) -> f64 {
+      x * y
+  }
 
-  //  (= (pi_sum a b)
-  //     (= (pi_term x) (div 1 (mul x (add x 2))))
-  //     (= (pi_next x) (add x 4))
-  //     (sum pi_term a pi_next b))
+  mod accumulate {
+      use super::{
+          assert_delta,
+          inc,
+          accumulate,
+          add, mul,
+          PI,
+      };
 
-  //  (assert_delta 0.001
-  //    pi
-  //    (mul 8 (pi_sum 1 10000)))
+      fn sum (
+          term: &Fn (f64) -> f64, a: f64,
+          next: &Fn (f64) -> f64, b: f64,
+      ) -> f64 {
+          accumulate (&add, 0.0, term, a, next, b)
+      }
 
-  //  (= (wallis_product a b)
-  //     (= (wallis_term x)
-  //        (div (mul (add (mul 2 x) 0) (add (mul 2 x) 2))
-  //             (mul (add (mul 2 x) 1) (add (mul 2 x) 1))))
-  //     (product wallis_term a inc b))
+      fn product (
+          term: &Fn (f64) -> f64, a: f64,
+          next: &Fn (f64) -> f64, b: f64,
+      ) -> f64 {
+          accumulate (&mul, 1.0, term, a, next, b)
+      }
 
-  //  (assert_delta 0.001
-  //    (wallis_product 1 1000)
-  //    (div pi 4))
+      fn pi_sum (a: f64, b: f64) -> f64 {
+          let pi_term = |x| 1.0 / (x * (x + 2.0));
+          let pi_next = |x| x + 4.0;
+          sum (&pi_term, a, &pi_next, b)
+      }
+
+      #[test]
+      fn test_pi_sum () {
+          assert_delta (
+              0.001,
+              PI,
+              8.0 * pi_sum (1.0, 10000.0));
+      }
+
+      fn wallis_product (a: f64, b: f64) -> f64 {
+          let wallis_term = |x| {
+              (((2.0 * x) + 0.0) * ((2.0 * x) + 2.0)) /
+                  (((2.0 * x) + 1.0) * ((2.0 * x) + 1.0))
+          };
+          product (&wallis_term, a, &inc, b)
+      }
+
+      #[test]
+      fn test_wallis_product () {
+          assert_delta (
+              0.001,
+              wallis_product (1.0, 1000.0),
+              PI / 4.0);
+      }
+  }
   #+end_src
 
 * Exercise 1.33 -- filtered-accumulate
 
   #+begin_src rust
-  //  (= (filtered_accumulate
-  //      combiner null_value
-  //      term a next b
-  //      filter)
-  //     (if (gt a b)
-  //       null_value
-  //       (if (filter a)
-  //         (combiner (term a)
-  //                   (filtered_accumulate
-  //                    combiner null_value
-  //                    term (next a) next b
-  //                    filter))
-  //         (filtered_accumulate
-  //          combiner null_value
-  //          term (next a) next b
-  //          filter))))
+  fn filtered_accumulate (
+      combiner: &Fn (f64, f64) -> f64,
+      null_value: f64,
+      term: &Fn (f64) -> f64, a: f64,
+      next: &Fn (f64) -> f64, b: f64,
+      filter: &Fn (f64) -> bool,
+  ) -> f64 {
+      if a > b {
+          null_value
+      } else if filter (a) {
+          combiner (term (a),
+                    filtered_accumulate (
+                        combiner, null_value,
+                        term, next (a), next, b,
+                        filter))
+      } else {
+          filtered_accumulate (
+              combiner, null_value,
+              term, next (a), next, b,
+              filter)
+      }
+  }
 
-  //  (= section_1_2
-  //     (load "1_2_procedures_and_the_processes_they_generate.jo"))
+  use crate::ch_1_2::prime_p;
 
-  //  (= prime_p section_1_2.prime_p)
+  fn sum_prime_square (a: f64, b: f64) -> f64 {
+      filtered_accumulate (
+          &add, 0.0,
+          &identity, a, &inc, b,
+          &prime_p)
+  }
 
-  //  (= (sum_prime_square a b)
-  //     (filtered_accumulate
-  //      add 0
-  //      identity a inc b
-  //      prime_p))
-
-  //  (assert (eq (sum_prime_square 0 10)
-  //              (add 1 (add 2 (add 3 (add 5 7))))))
+  #[test]
+  fn test_sum_prime_square () {
+      assert_eq! (sum_prime_square (0.0, 10.0),
+                  (1.0 + 2.0 + 3.0 + 5.0 + 7.0))
+  }
   #+end_src
 
 * 1-3-2 Constructing Procedures Using Lambda
 
   #+begin_src rust
-  //  (= (pi_sum a b)
-  //     (sum (lambda [x] (div 1 (mul x (add x 2))))
-  //          a
-  //          (lambda [x] (add x 4))
-  //          b))
+  mod lambda {
+      use super::{
+          assert_delta,
+          cube,
+          PI,
+          sum,
+      };
+      fn pi_sum (a: f64, b: f64) -> f64 {
+          sum (&|x| 1.0 / (x * (x + 2.0)), a,
+               &|x| x + 4.0, b)
+      }
 
-  //  (assert_delta 0.001
-  //    pi (mul 8 (pi_sum 1 10000)))
+      #[test]
+      fn test_pi_sum () {
+          assert_delta (
+              0.001,
+              PI,
+              8.0 * pi_sum (1.0, 10000.0));
+      }
 
-  //  (= (integral f a b dx)
-  //     (mul (sum f (add a (div dx 2))
-  //               (lambda [x] (add x dx))
-  //               b)
-  //          dx))
+      fn integral (
+          f: & Fn (f64) -> f64,
+          a: f64, b: f64,
+          dx: f64,
+      ) -> f64 {
+          sum (f, (a + (dx / 2.0)), &|x| x + dx, b) * dx
+      }
 
-  //  (assert_delta 0.001
-  //    (integral cube 0 1 0.001)
-  //    (div 1 4))
+      #[test]
+      fn test_integral () {
+          assert_delta (
+              0.001,
+              integral (&cube, 0.0, 1.0, 0.001),
+              1.0 / 4.0);
+      }
+  }
   #+end_src
 
 * 1-3-3 Procedures as General Methods
@@ -415,51 +486,75 @@
 *** Finding roots of equations by the half-interval method
 
     #+begin_src rust
-    //  (= (average x y) (div (add x y) 2))
+    fn average (x: f64, y: f64) -> f64 {
+        (x + y) / 2.0
+    }
 
-    //  (= (positive_p x) (gt x 0))
-    //  (= (negative_p x) (lt x 0))
+    fn positive_p (x: f64) -> bool {
+        x > 0.0
+    }
 
-    //  (= (search f neg_point pos_point)
-    //     (= midpoint (average neg_point pos_point))
-    //     (if (close_enough_p neg_point pos_point)
-    //       midpoint
-    //       (let [(test_value (f midpoint))]
-    //         (cond
-    //           [(positive_p test_value)
-    //            (search f neg_point midpoint)]
-    //           [(negative_p test_value)
-    //            (search f midpoint pos_point)]
-    //           [else midpoint]))))
+    fn negative_p (x: f64) -> bool {
+        x < 0.0
+    }
 
-    //  (= (close_enough_p x y)
-    //     (lt (abs (sub x y)) 0.001))
+    fn search (
+        f: &Fn (f64) -> f64,
+        neg_point: f64,
+        pos_point: f64,
+    ) -> f64 {
+        let midpoint = average (neg_point, pos_point);
+        if close_enough_p (neg_point, pos_point) {
+            midpoint
+        } else {
+            let test_value = f (midpoint);
+            if positive_p (test_value) {
+                search (f, neg_point, midpoint)
+            } else if negative_p (test_value) {
+                search (f, midpoint, pos_point)
+            } else {
+                midpoint
+            }
+        }
+    }
 
-    //  (= (half_interval_method f a b)
-    //     (let [(a_value (f a))
-    //           (b_value (f b))]
-    //       (cond [(and (negative_p a_value)
-    //                   (positive_p b_value))
-    //              (search f a b)]
-    //             [(and (negative_p b_value)
-    //                   (positive_p a_value))
-    //              (search f b a)]
-    //             [else
-    //              (println "- half_interval_method")
-    //              (println "  values are not of opposite sign")
-    //              (print "  a : ") (println a)
-    //              (print "  b : ") (println b)])))
+    fn close_enough_p (x: f64,  y: f64) -> bool {
+        (x - y) .abs () < 0.001
+    }
 
-    //  (assert_delta 0.01
-    //    (half_interval_method num_sin 2 4)
-    //    3.14)
+    fn half_interval_method (
+        f: &Fn (f64) -> f64,
+        a: f64,
+        b: f64,
+    ) -> Result <f64, String> {
+        let a_value = f (a);
+        let b_value = f (b);
+        if negative_p (a_value) && positive_p (b_value) {
+            Ok (search (f, a, b))
+        } else if negative_p (b_value) && positive_p (a_value) {
+            Ok (search (f, b, a))
+        } else {;
+            Err (format! (
+                "values are not of opposite sign, \
+                 a : {}, b : {}", a, b))
+        }
+    }
 
-    //  (assert_delta 0.01
-    //    (half_interval_method
-    //     (lambda [x] (mul (sub x 1) (sub x 3)))
-    //     0
-    //     2)
-    //    1)
+    #[test]
+    fn test_half_interval_method () {
+        assert_delta (
+            0.01,
+            half_interval_method (
+                &|x| x.sin (),
+                2.0, 4.0) .unwrap (),
+            3.14);
+        assert_delta (
+            0.01,
+            half_interval_method (
+                &|x| (x - 1.0) * (x - 3.0),
+                0.0, 2.0) .unwrap (),
+            1.0);
+    }
     #+end_src
 
 *** [todo] Finding fixed points of functions

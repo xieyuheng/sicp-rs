@@ -252,7 +252,7 @@ fn test_smallest_divisor () {
     assert_eq! (smallest_divisor (121.0), 11.0);
 }
 
-fn prime_p (n: f64) -> bool {
+pub fn prime_p (n: f64) -> bool {
     n == smallest_divisor (n)
 }
 
