@@ -72,32 +72,51 @@
 *** abstraction by a function which take functions as arguments
 
     #+begin_src rust
+    fn inc (a: f64) -> f64 {
+        a + 1.0
+    }
+
+    // we can not use the following
+    //   because currently equivalence between function types
+    //   is not handled properly  by rust's type system
+
+    // fn sum <F> (
+    //     term: &F, a: f64,
+    //     next: &F, b: f64,
+    // ) -> f64
+    // where F: Fn (f64) -> f64 {
+    //     if a > b {
+    //         0.0
+    //     } else {
+    //         term (a) +
+    //             sum (term, next (a),
+    //                  next, b)
+    //     }
+    // }
+
+    fn sum (
+        term: &impl Fn (f64) -> f64, a: f64,
+        next: &impl Fn (f64) -> f64, b: f64,
+    ) -> f64 {
+        if a > b {
+            0.0
+        } else {
+            term (a) +
+                sum (term, next (a),
+                     next, b)
+        }
+    }
+
     mod with_sum {
         use super::{
             assert_delta,
             cube,
             PI,
+            inc, sum,
         };
 
-        fn sum (
-            term: impl Fn (f64) -> f64, a: f64,
-            next: impl Fn (f64) -> f64, b: f64,
-        ) -> f64 {
-            if a > b {
-                0.0
-            } else {
-                term (a) +
-                    sum (term, next (a),
-                         next, b)
-            }
-        }
-
-        fn inc (a: f64) -> f64 {
-            a + 1.0
-        }
-
         fn sum_cubes (a: f64, b: f64) -> f64 {
-            sum (cube, a, inc, b)
+            sum (&cube, a, &inc, b)
         }
 
         #[test]
@@ -115,7 +134,7 @@
         }
 
         fn sum_integers (a: f64, b: f64) -> f64 {
-            sum (identity, a, inc, b)
+            sum (&identity, a, &inc, b)
         }
 
         #[test]
@@ -126,7 +145,7 @@
         fn pi_sum (a: f64, b: f64) -> f64 {
             let pi_term = |x| 1.0 / (x * (x + 2.0));
             let pi_next = |x| x + 4.0;
-            sum (pi_term, a, pi_next, b)
+            sum (&pi_term, a, &pi_next, b)
         }
 
         #[test]
@@ -138,19 +157,19 @@
         }
 
         fn integral (
-            f: impl Fn (f64) -> f64,
+            f: &impl Fn (f64) -> f64,
             a: f64, b: f64,
             dx: f64,
         ) -> f64 {
             let add_dx = |x| x + dx;
-            sum (f, (a + (dx / 2.0)), add_dx, b) * dx
+            sum (f, (a + (dx / 2.0)), &add_dx, b) * dx
         }
 
         #[test]
         fn test_integral () {
             assert_delta (
                 0.001,
-                integral (cube, 0.0, 1.0, 0.001),
+                integral (&cube, 0.0, 1.0, 0.001),
                 1.0 / 4.0);
         }
     }
@@ -159,72 +178,141 @@
 * Exercise 1.29 -- Simpson's Rule for numerical integration
 
   #+begin_src rust
-  //  (= (simpson_integral f a b n)
-  //     (= h (div (sub b a) n))
-  //     (= (simpson_coefficient k)
-  //        (cond [(or (eq 0 k) (eq n k)) 1]
-  //              [(odd_p k) 4]
-  //              [(even_p k) 2]))
-  //     (= (simpson_term k)
-  //        (mul (simpson_coefficient k)
-  //             (f (add a (mul k h)))))
-  //     (mul (sum simpson_term 0 inc n)
-  //          (div h 3)))
+  fn odd_p (n: f64) -> bool {
+      n % 2.0 == 1.0
+  }
 
-  //  (assert_delta 0.0001
-  //    (simpson_integral cube 0 1 100)
-  //    (div 1 4))
+  fn even_p (n: f64) -> bool {
+      n % 2.0 == 0.0
+  }
+
+  fn simpson_integral (
+      f: &impl Fn (f64) -> f64,
+      a: f64, b: f64,
+      n: f64,
+  ) -> f64 {
+      let h = (b - a) / n;
+      let simpson_coefficient = |k| -> f64 {
+          if 0.0 == k || n == k {
+              1.0
+          } else if odd_p (k) {
+              4.0
+          } else {
+              assert! (even_p (k));
+              2.0
+          }
+      };
+      let simpson_term = |k| -> f64 {
+          simpson_coefficient (k) *
+              f (a + (k * h))
+      };
+      sum (&simpson_term, 0.0, &inc, n) *
+          (h / 3.0)
+  }
+
+  #[test]
+  fn test_simpson_term () {
+      assert_delta (
+          0.0001,
+          simpson_integral (&cube, 0.0, 1.0, 100.0),
+          1.0 / 4.0)
+  }
   #+end_src
 
 * Exercise 1.30 -- sum-iter
 
   #+begin_src rust
-  //  (note we do not have letrec
-  //    (= (sum term a next b)
-  //       (= (iter a result)
-  //          (if (gt a b)
-  //            result
-  //            (iter (next a) (add (term a) result))))
-  //       (iter a 0)))
+  mod sum_iter {
+      use super::{
+          inc,
+          cube,
+      };
 
-  //  (= (sum_iter term a next b result)
-  //     (if (gt a b)
-  //       result
-  //       (sum_iter term (next a) next b (add (term a) result))))
+      // rust does not have letrec for now
 
-  //  (= (sum term a next b)
-  //     (sum_iter term a next b 0))
+      // fn sum (
+      //     term: &impl Fn (f64) -> f64, a: f64,
+      //     next: &impl Fn (f64) -> f64, b: f64,
+      // ) -> f64 {
+      //     letrec sum_iter = |a, result| {
+      //         if a > b {
+      //             result
+      //         } else {
+      //             sum_iter (next (a), term (a) + result)
+      //         }
+      //     };
+      //     sum_iter (a, 0.0)
+      // }
 
-  //  (= (sum_cubes a b)
-  //     (sum cube a inc b))
+      fn sum_iter (
+          term: &impl Fn (f64) -> f64, a: f64,
+          next: &impl Fn (f64) -> f64, b: f64,
+          result: f64,
+      ) -> f64 {
+          if a > b {
+              result
+          } else {
+              sum_iter (
+                  term, next (a),
+                  next, b,
+                  term (a) + result)
+          }
+      }
 
-  //  (assert (eq (sum_cubes 0 3)
-  //              (add (cube 1)
-  //                   (add (cube 2)
-  //                        (cube 3)))))
+      fn sum (
+          term: &impl Fn (f64) -> f64, a: f64,
+          next: &impl Fn (f64) -> f64, b: f64,
+      ) -> f64 {
+          sum_iter (term, a, next, b, 0.0)
+      }
 
-  //  (assert (eq (sum_cubes 1 10)
-  //              3025))
+      fn sum_cubes (a: f64, b: f64) -> f64 {
+          sum (&cube, a, &inc, b)
+      }
+
+      #[test]
+      fn test_sum_cubes () {
+          assert_eq! (
+              sum_cubes (0.0, 3.0),
+              cube (1.0) + cube (2.0) + cube (3.0));
+          assert_eq! (
+              sum_cubes (1.0, 10.0),
+              3025.0);
+      }
+  }
   #+end_src
 
 * Exercise 1.31 -- Wallis Product
 
   #+begin_src rust
-  //  (= (product term a next b)
-  //     (if (gt a b)
-  //       1
-  //       (mul (term a)
-  //            (product term (next a) next b))))
+  fn product (
+      term: &impl Fn (f64) -> f64, a: f64,
+      next: &impl Fn (f64) -> f64, b: f64,
+  ) -> f64 {
+      if a > b {
+          1.0
+      } else {
+          term (a) *
+              product (term, next (a),
+                       next, b)
+      }
+  }
 
-  //  (= (wallis_product a b)
-  //     (= (wallis_term x)
-  //        (div (mul (add (mul 2 x) 0) (add (mul 2 x) 2))
-  //             (mul (add (mul 2 x) 1) (add (mul 2 x) 1))))
-  //     (product wallis_term a inc b))
+  fn wallis_product (a: f64, b: f64) -> f64 {
+      let wallis_term = |x| {
+          (((2.0 * x) + 0.0) * ((2.0 * x) + 2.0)) /
+              (((2.0 * x) + 1.0) * ((2.0 * x) + 1.0))
+      };
+      product (&wallis_term, a, &inc, b)
+  }
 
-  //  (assert_delta 0.001
-  //    (wallis_product 1 1000)
-  //    (div pi 4))
+  #[test]
+  fn test_wallis_product () {
+      assert_delta (
+          0.001,
+          wallis_product (1.0, 1000.0),
+          PI / 4.0);
+  }
   #+end_src
 
 * Exercise 1.32 -- accumulate
