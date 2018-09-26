@@ -509,4 +509,42 @@ fn test_half_interval_method () {
         1.0);
 }
 
-//  (= tolerance 0.00001)
+const TOLERANCE: f64 = 0.00001;
+
+fn fixed_point (
+    f: &Fn (f64) -> f64,
+    first_guess: f64,
+) -> f64 {
+    fn close_enough_p (v1: f64, v2: f64) -> bool {
+      (v1 - v2) .abs () < TOLERANCE
+    }
+    // rust does not have letrec for now
+    fn try_guess (
+        f: &Fn (f64) -> f64,
+        guess: f64,
+    ) -> f64 {
+        let next = f (guess);
+        if close_enough_p (guess, next) {
+            next
+        } else {
+            try_guess (f, next)
+        }
+    }
+    try_guess (f, first_guess)
+}
+
+#[test]
+fn test_fixed_point () {
+    println! ("{}", fixed_point (&|x| x.cos (), 1.0));
+    println! ("{}", fixed_point (&|y| y.sin () + y.cos (), 1.0));
+}
+
+fn sqrt (x: f64) -> f64 {
+    // fixed_point (&|y| x / y, x)
+    fixed_point (&|y| average (y, x / y), x)
+}
+
+#[test]
+fn test_sqrt () {
+    println! ("{}", sqrt (4.0));
+}
