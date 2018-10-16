@@ -1,18 +1,4 @@
 [workspace]
-
 members = [
     "sicp",
 ]
-
-[profile.dev]
-opt-level = 0
-debug = true
-rpath = false
-lto = false
-debug-assertions = true
-codegen-units = 16
-incremental = true
-overflow-checks = true
-
-[profile.release]
-# debug = true
